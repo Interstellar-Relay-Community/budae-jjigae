@@ -44,7 +44,7 @@ async fn hello(req: Request<Incoming>) -> Result<Response<Full<Bytes>>, hyper::E
                 // Spam!!
                 tracing::info!("Spam killed: {}", content_str);
                 let mut response = Response::new(Full::new(Bytes::from("GTUBE!")));
-                *(response.status_mut()) = StatusCode::UNAVAILABLE_FOR_LEGAL_REASONS;
+                *(response.status_mut()) = StatusCode::IM_A_TEAPOT;
 
                 return Ok(response);
             }
@@ -56,7 +56,7 @@ async fn hello(req: Request<Incoming>) -> Result<Response<Full<Bytes>>, hyper::E
                 // Spam!!
                 tracing::info!("Spam killed: {}", content_str);
                 let mut response = Response::new(Full::new(Bytes::from("bad!")));
-                *(response.status_mut()) = StatusCode::UNAVAILABLE_FOR_LEGAL_REASONS;
+                *(response.status_mut()) = StatusCode::IM_A_TEAPOT;
 
                 return Ok(response);
             }
