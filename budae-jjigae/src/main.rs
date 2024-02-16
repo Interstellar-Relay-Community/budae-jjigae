@@ -75,6 +75,17 @@ async fn hello(
 
                 return Ok(response);
             }
+
+            let re = Regex::new(r"한국괴물군").unwrap();
+
+            if let Some(_) = re.captures(content_str) {
+                // Spam!!
+                tracing::info!("Spam killed: {}", content_str);
+                let mut response = Response::new(Full::new(Bytes::from("bad!")));
+                *(response.status_mut()) = StatusCode::IM_A_TEAPOT;
+
+                return Ok(response);
+            }
         }
     }
 
