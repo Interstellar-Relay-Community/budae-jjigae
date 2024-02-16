@@ -36,7 +36,7 @@ async fn hello(req: Request<Incoming>) -> Result<Response<Full<Bytes>>, hyper::E
         }
     };
 
-    udo dockef let Some(content) = body.pointer(pointer!["object", "content"]) {
+    if let Some(content) = body.pointer(pointer!["object", "content"]) {
         if let Some(content_str) = content.as_str() {
             // TEST: match GTUBE
             let re = Regex::new(r"XJS\*C4JDBQADN1\.NSBN3\*2IDNEN\*GTUBE-STANDARD-ANTI-UBE-TEST-ACTIVITYPUB\*C\.34X").unwrap();
