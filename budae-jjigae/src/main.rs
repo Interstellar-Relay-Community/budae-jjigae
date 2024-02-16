@@ -36,8 +36,19 @@ async fn hello(req: Request<Incoming>) -> Result<Response<Full<Bytes>>, hyper::E
         }
     };
 
-    if let Some(content) = body.pointer(pointer!["content"]) {
+    udo dockef let Some(content) = body.pointer(pointer!["object", "content"]) {
         if let Some(content_str) = content.as_str() {
+            // TEST: match GTUBE
+            let re = Regex::new(r"XJS\*C4JDBQADN1\.NSBN3\*2IDNEN\*GTUBE-STANDARD-ANTI-UBE-TEST-ACTIVITYPUB\*C\.34X").unwrap();
+            if let Some(_) = re.captures(content_str) {
+                // Spam!!
+                tracing::info!("Spam killed: {}", content_str);
+                let mut response = Response::new(Full::new(Bytes::from("GTUBE!")));
+                *(response.status_mut()) = StatusCode::UNAVAILABLE_FOR_LEGAL_REASONS;
+
+                return Ok(response);
+            }
+
             // TODO: Move it outside of this function
             let re = Regex::new(r"mastodon-japan\.net\/@ap12").unwrap();
 
@@ -52,7 +63,8 @@ async fn hello(req: Request<Incoming>) -> Result<Response<Full<Bytes>>, hyper::E
         }
     }
 
-    let stream = TcpStream::connect("localhost:3001").await.unwrap();
+    // TODO: Make it configurable
+    let stream = TcpStream::connect("web:3000").await.unwrap();
     let io = TokioIo::new(stream);
     tracing::info!("Requesting..");
     let (mut sender, conn) = hyper::client::conn::http1::handshake(io).await?;
@@ -81,7 +93,7 @@ pub async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     tracing_subscriber::fmt().init();
 
     // This address is localhost
-    let addr: SocketAddr = ([127, 0, 0, 1], 3000).into();
+    let addr: SocketAddr = ([0, 0, 0, 0], 3000).into();
 
     // Bind to the port and listen for incoming TCP connections
     let listener = TcpListener::bind(addr).await?;
