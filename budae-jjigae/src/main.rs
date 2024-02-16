@@ -2,19 +2,31 @@ use std::convert::Infallible;
 use std::net::SocketAddr;
 
 use bytes::Bytes;
+use clap::Parser;
 use http_body_util::{BodyExt, Full};
+use hyper::body::{Body, Incoming};
 use hyper::server::conn::http1;
 use hyper::service::service_fn;
 use hyper::{Request, Response, StatusCode};
-use hyper::body::{Body, Incoming};
 use hyper_util::rt::tokio::{TokioIo, TokioTimer};
-use sonic_rs::{JsonValueTrait, pointer, Value};
-use tokio::net::{TcpListener, TcpStream};
 use regex::Regex;
+use sonic_rs::{pointer, JsonValueTrait, Value};
+use std::sync::Arc;
+use tokio::net::{TcpListener, TcpStream};
+
+#[derive(Parser, Clone, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Args {
+    #[arg(long)]
+    backend: String,
+}
 
 // An async function that consumes a request, does nothing with it and returns a
 // response.
-async fn hello(req: Request<Incoming>) -> Result<Response<Full<Bytes>>, hyper::Error> {
+async fn hello(
+    req: Request<Incoming>,
+    backend: &str,
+) -> Result<Response<Full<Bytes>>, hyper::Error> {
     let max = req.body().size_hint().upper().unwrap_or(u64::MAX);
     if max > 1024 * 1024 * 2 {
         let mut resp = Response::new(Full::new(Bytes::from("Request too big!")));
@@ -39,7 +51,10 @@ async fn hello(req: Request<Incoming>) -> Result<Response<Full<Bytes>>, hyper::E
     if let Some(content) = body.pointer(pointer!["object", "content"]) {
         if let Some(content_str) = content.as_str() {
             // TEST: match GTUBE
-            let re = Regex::new(r"XJS\*C4JDBQADN1\.NSBN3\*2IDNEN\*GTUBE-STANDARD-ANTI-UBE-TEST-ACTIVITYPUB\*C\.34X").unwrap();
+            let re = Regex::new(
+                r"XJS\*C4JDBQADN1\.NSBN3\*2IDNEN\*GTUBE-STANDARD-ANTI-UBE-TEST-ACTIVITYPUB\*C\.34X",
+            )
+            .unwrap();
             if let Some(_) = re.captures(content_str) {
                 // Spam!!
                 tracing::info!("Spam killed: {}", content_str);
@@ -64,7 +79,7 @@ async fn hello(req: Request<Incoming>) -> Result<Response<Full<Bytes>>, hyper::E
     }
 
     // TODO: Make it configurable
-    let stream = TcpStream::connect("web:3000").await.unwrap();
+    let stream = TcpStream::connect(backend).await.unwrap();
     let io = TokioIo::new(stream);
     tracing::info!("Requesting..");
     let (mut sender, conn) = hyper::client::conn::http1::handshake(io).await?;
@@ -92,19 +107,24 @@ async fn hello(req: Request<Incoming>) -> Result<Response<Full<Bytes>>, hyper::E
 pub async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     tracing_subscriber::fmt().init();
 
+    let args = Arc::new(Args::parse());
+
     // This address is localhost
     let addr: SocketAddr = ([0, 0, 0, 0], 3000).into();
 
     // Bind to the port and listen for incoming TCP connections
     let listener = TcpListener::bind(addr).await?;
     println!("Listening on http://{}", addr);
+
     loop {
         let (tcp, _) = listener.accept().await?;
         let io = TokioIo::new(tcp);
 
+        let args = args.clone();
+
         tokio::task::spawn(async move {
             if let Err(err) = http1::Builder::new()
-                .serve_connection(io, service_fn(hello))
+                .serve_connection(io, service_fn(|req| hello(req, &args.backend)))
                 .await
             {
                 println!("Error serving connection: {:?}", err);
