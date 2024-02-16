@@ -10,6 +10,7 @@ use hyper::body::{Body, Incoming};
 use hyper_util::rt::tokio::{TokioIo, TokioTimer};
 use sonic_rs::{JsonValueTrait, pointer, Value};
 use tokio::net::{TcpListener, TcpStream};
+use regex::Regex;
 
 // An async function that consumes a request, does nothing with it and returns a
 // response.
@@ -37,8 +38,17 @@ async fn hello(req: Request<Incoming>) -> Result<Response<Full<Bytes>>, hyper::E
 
     if let Some(content) = body.pointer(pointer!["content"]) {
         if let Some(content_str) = content.as_str() {
-            // TODO: Apply spam filter
-            println!("{:?}", content_str);
+            // TODO: Move it outside of this function
+            let re = Regex::new(r"mastodon-japan\.net\/@ap12").unwrap();
+
+            if let Some(_) = re.captures(content_str) {
+                // Spam!!
+                tracing::info!("Spam killed: {}", content_str);
+                let mut response = Response::new(Full::new(Bytes::from("bad!")));
+                *(response.status_mut()) = StatusCode::UNAVAILABLE_FOR_LEGAL_REASONS;
+
+                return Ok(response);
+            }
         }
     }
 
