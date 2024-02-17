@@ -71,10 +71,13 @@ async fn hello(
 
     // Extract content
     if let Some(content_str) = object.pointer(pointer!["content"]).as_str() {
+        // Extract ID
+        let object_id = object.pointer(pointer!["id"]).as_str().unwrap_or("Unknown ID!");
+
         for re in FILTERS.iter() {
             if let Some(_) = re.captures(content_str) {
                 // Spam!!
-                tracing::info!("Spam killed - RegExp: {}", content_str);
+                tracing::info!("Spam killed - RegExp: {} => {}", object_id, content_str);
                 let mut response = Response::new(Full::new(Bytes::from("Spam is not allowed.")));
                 *(response.status_mut()) = StatusCode::IM_A_TEAPOT;
 
@@ -96,7 +99,7 @@ async fn hello(
 
                     if mention_cnt > 5 {
                         // Spam!!
-                        tracing::info!("Spam killed - Too many mention: {}", content_str);
+                        tracing::info!("Spam killed - Too many mention: {} => {}", object_id, content_str);
                         let mut response =
                             Response::new(Full::new(Bytes::from("Spam is not allowed.")));
                         *(response.status_mut()) = StatusCode::IM_A_TEAPOT;
