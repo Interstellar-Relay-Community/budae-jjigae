@@ -108,12 +108,14 @@ async fn hello(
         }
     }
 
+    tracing::info!("Spam filter passed. Relaying to the server.");
+
     // TODO: Make it configurable
     let stream = TcpStream::connect(backend).await.unwrap();
     let io = TokioIo::new(stream);
-    tracing::info!("Requesting..");
+    tracing::debug!("Handshaking..");
     let (mut sender, conn) = hyper::client::conn::http1::handshake(io).await?;
-    tracing::info!("Request done.");
+    tracing::debug!("Handshake done.");
 
     tokio::task::spawn(async move {
         if let Err(e) = conn.await {
@@ -122,13 +124,13 @@ async fn hello(
     });
 
     let req = Request::from_parts(parts, Full::new(body_bytes));
-    tracing::info!("Sending req!");
+    tracing::debug!("Sending req!");
     let res = sender.send_request(req).await.unwrap();
 
     let (resp_parts, resp_body) = res.into_parts();
     let payload = resp_body.collect().await?.to_bytes();
 
-    tracing::info!("Returning!");
+    tracing::debug!("Returning!");
 
     Ok(Response::from_parts(resp_parts, Full::new(payload)))
 }
