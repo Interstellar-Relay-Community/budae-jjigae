@@ -14,6 +14,25 @@ use sonic_rs::{pointer, JsonValueTrait, Value};
 use std::sync::Arc;
 use tokio::net::{TcpListener, TcpStream};
 
+use once_cell::sync::Lazy;
+
+static FILTERS: Lazy<Arc<Vec<Regex>>> = Lazy::new(|| {
+    let re = vec![
+        // GTUBE
+        Regex::new(
+            r"XJS\*C4JDBQADN1\.NSBN3\*2IDNEN\*GTUBE-STANDARD-ANTI-UBE-TEST-ACTIVITYPUB\*C\.34X",
+        )
+        .unwrap(),
+        // Sorry, @ap12, but they are using your name in spam
+        Regex::new(r"mastodon-japan\.net\/@ap12").unwrap(),
+        // Would you kindly stop spamming in Korean?
+        Regex::new(r"한국괴물군").unwrap(),
+        // Fucking discord.
+        Regex::new(r"discord.gg\/ctkpaarr").unwrap(),
+    ];
+    Arc::new(re)
+});
+
 #[derive(Parser, Clone, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
@@ -50,41 +69,16 @@ async fn hello(
 
     if let Some(content) = body.pointer(pointer!["object", "content"]) {
         if let Some(content_str) = content.as_str() {
-            // TEST: match GTUBE
-            let re = Regex::new(
-                r"XJS\*C4JDBQADN1\.NSBN3\*2IDNEN\*GTUBE-STANDARD-ANTI-UBE-TEST-ACTIVITYPUB\*C\.34X",
-            )
-            .unwrap();
-            if let Some(_) = re.captures(content_str) {
-                // Spam!!
-                tracing::info!("Spam killed: {}", content_str);
-                let mut response = Response::new(Full::new(Bytes::from("GTUBE!")));
-                *(response.status_mut()) = StatusCode::IM_A_TEAPOT;
+            for re in FILTERS.iter() {
+                if let Some(_) = re.captures(content_str) {
+                    // Spam!!
+                    tracing::info!("Spam killed: {}", content_str);
+                    let mut response =
+                        Response::new(Full::new(Bytes::from("Spam is not allowed.")));
+                    *(response.status_mut()) = StatusCode::IM_A_TEAPOT;
 
-                return Ok(response);
-            }
-
-            // TODO: Move it outside of this function
-            let re = Regex::new(r"mastodon-japan\.net\/@ap12").unwrap();
-
-            if let Some(_) = re.captures(content_str) {
-                // Spam!!
-                tracing::info!("Spam killed: {}", content_str);
-                let mut response = Response::new(Full::new(Bytes::from("bad!")));
-                *(response.status_mut()) = StatusCode::IM_A_TEAPOT;
-
-                return Ok(response);
-            }
-
-            let re = Regex::new(r"한국괴물군").unwrap();
-
-            if let Some(_) = re.captures(content_str) {
-                // Spam!!
-                tracing::info!("Spam killed: {}", content_str);
-                let mut response = Response::new(Full::new(Bytes::from("bad!")));
-                *(response.status_mut()) = StatusCode::IM_A_TEAPOT;
-
-                return Ok(response);
+                    return Ok(response);
+                }
             }
         }
     }
