@@ -1,7 +1,8 @@
 # Budae Jjigae - ActivityPub spam filter
 
 ## License
-AGPL-3.0-or-later
+~~AGPL-3.0-or-later~~
+Proprietary for futur version due to script kiddies learn from the code.
 
 ## How it works
 
