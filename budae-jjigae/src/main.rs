@@ -37,13 +37,15 @@ static FILTERS: Lazy<Arc<Vec<Regex>>> = Lazy::new(|| {
 struct Args {
     #[arg(long)]
     backend: String,
+    #[arg(long, default_value = "5")]
+    max_new_reply_cnt: i32,
 }
 
 // An async function that consumes a request, does nothing with it and returns a
 // response.
 async fn hello(
     req: Request<Incoming>,
-    backend: &str,
+    args: &Args,
 ) -> Result<Response<Full<Bytes>>, hyper::Error> {
     let max = req.body().size_hint().upper().unwrap_or(u64::MAX);
     if max > 1024 * 1024 * 2 {
@@ -98,7 +100,7 @@ async fn hello(
                         }
                     }
 
-                    if mention_cnt > 5 {
+                    if mention_cnt >= args.max_new_reply_cnt {
                         // Spam!!
                         tracing::info!(
                             "Spam killed - Too many mention: {} => {}",
@@ -119,7 +121,7 @@ async fn hello(
     tracing::info!("Spam filter passed. Relaying to the server.");
 
     // TODO: Make it configurable
-    let stream = TcpStream::connect(backend).await.unwrap();
+    let stream = TcpStream::connect(&args.backend).await.unwrap();
     let io = TokioIo::new(stream);
     tracing::debug!("Handshaking..");
     let (mut sender, conn) = hyper::client::conn::http1::handshake(io).await?;
@@ -164,7 +166,7 @@ pub async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
         tokio::task::spawn(async move {
             if let Err(err) = http1::Builder::new()
-                .serve_connection(io, service_fn(|req| hello(req, &args.backend)))
+                .serve_connection(io, service_fn(|req| hello(req, &args)))
                 .await
             {
                 println!("Error serving connection: {:?}", err);
