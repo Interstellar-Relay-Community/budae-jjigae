@@ -39,7 +39,7 @@ struct Args {
     backend: String,
     #[arg(long, default_value = "5")]
     max_new_reply_cnt: i32,
-    #[arg(long, default_value = "false")]
+    #[arg(long, default_value = "true")]
     silent_mode: bool,
 
 }
