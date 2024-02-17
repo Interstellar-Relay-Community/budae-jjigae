@@ -39,6 +39,9 @@ struct Args {
     backend: String,
     #[arg(long, default_value = "5")]
     max_new_reply_cnt: i32,
+    #[arg(long, default_value = "false")]
+    silent_mode: bool,
+
 }
 
 // An async function that consumes a request, does nothing with it and returns a
@@ -53,6 +56,11 @@ async fn hello(
         *resp.status_mut() = hyper::StatusCode::PAYLOAD_TOO_LARGE;
         return Ok(resp);
     }
+
+    let status_code = match args.silent_mode {
+        true => StatusCode::CREATED,
+        false => StatusCode::IM_A_TEAPOT,
+    };
 
     let (parts, incoming) = req.into_parts();
 
@@ -82,7 +90,7 @@ async fn hello(
                 // Spam!!
                 tracing::info!("Spam killed - RegExp: {} => {}", object_id, content_str);
                 let mut response = Response::new(Full::new(Bytes::from("Spam is not allowed.")));
-                *(response.status_mut()) = StatusCode::IM_A_TEAPOT;
+                *(response.status_mut()) = status_code;
 
                 return Ok(response);
             }
@@ -109,7 +117,7 @@ async fn hello(
                         );
                         let mut response =
                             Response::new(Full::new(Bytes::from("Spam is not allowed.")));
-                        *(response.status_mut()) = StatusCode::IM_A_TEAPOT;
+                        *(response.status_mut()) = status_code;
 
                         return Ok(response);
                     }
