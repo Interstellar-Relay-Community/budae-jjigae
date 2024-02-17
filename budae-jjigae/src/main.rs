@@ -1,4 +1,3 @@
-use std::convert::Infallible;
 use std::net::SocketAddr;
 
 use bytes::Bytes;
@@ -8,9 +7,9 @@ use hyper::body::{Body, Incoming};
 use hyper::server::conn::http1;
 use hyper::service::service_fn;
 use hyper::{Request, Response, StatusCode};
-use hyper_util::rt::tokio::{TokioIo, TokioTimer};
+use hyper_util::rt::tokio::TokioIo;
 use regex::Regex;
-use sonic_rs::{pointer, JsonValueTrait, Value};
+use sonic_rs::{pointer, JsonContainerTrait, JsonValueTrait};
 use std::sync::Arc;
 use tokio::net::{TcpListener, TcpStream};
 
@@ -67,17 +66,43 @@ async fn hello(
         }
     };
 
-    if let Some(content) = body.pointer(pointer!["object", "content"]) {
-        if let Some(content_str) = content.as_str() {
-            for re in FILTERS.iter() {
-                if let Some(_) = re.captures(content_str) {
-                    // Spam!!
-                    tracing::info!("Spam killed: {}", content_str);
-                    let mut response =
-                        Response::new(Full::new(Bytes::from("Spam is not allowed.")));
-                    *(response.status_mut()) = StatusCode::IM_A_TEAPOT;
+    // Extract object
+    let object = body.pointer(pointer!["object"]);
 
-                    return Ok(response);
+    // Extract content
+    if let Some(content_str) = object.pointer(pointer!["content"]).as_str() {
+        for re in FILTERS.iter() {
+            if let Some(_) = re.captures(content_str) {
+                // Spam!!
+                tracing::info!("Spam killed - RegExp: {}", content_str);
+                let mut response = Response::new(Full::new(Bytes::from("Spam is not allowed.")));
+                *(response.status_mut()) = StatusCode::IM_A_TEAPOT;
+
+                return Ok(response);
+            }
+        }
+
+        if let Some(reply_to) = object.pointer(pointer!["inReplyTo"]) {
+            if reply_to.is_null() {
+                if let Some(tags) = object.pointer(pointer!["tag"]).as_array() {
+                    let mut mention_cnt = 0;
+                    for tag in tags.iter() {
+                        if let Some(tag_type) = tag.pointer(pointer!["type"]).as_str() {
+                            if tag_type == "Mention" {
+                                mention_cnt += 1;
+                            }
+                        }
+                    }
+
+                    if mention_cnt > 5 {
+                        // Spam!!
+                        tracing::info!("Spam killed - Too many mention: {}", content_str);
+                        let mut response =
+                            Response::new(Full::new(Bytes::from("Spam is not allowed.")));
+                        *(response.status_mut()) = StatusCode::IM_A_TEAPOT;
+
+                        return Ok(response);
+                    }
                 }
             }
         }
