@@ -72,10 +72,8 @@ async fn hello(
     // Extract content
     if let Some(content_str) = object.pointer(pointer!["content"]).as_str() {
         // Extract ID
-        let object_id = object
-            .pointer(pointer!["id"])
-            .as_str()
-            .unwrap_or("Unknown ID!");
+        let object_id_raw = object.pointer(pointer!["id"]);
+        let object_id = object_id_raw.as_str().unwrap_or("Unknown ID");
 
         for re in FILTERS.iter() {
             if let Some(_) = re.captures(content_str) {
