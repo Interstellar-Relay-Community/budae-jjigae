@@ -1,8 +1,8 @@
-# Budae Jjigae - ActivityPub spam filter
+# [Budae Jjigae](https://en.wikipedia.org/wiki/Budae-jjigae) - ActivityPub spam filter
 
 ## License
 ~~AGPL-3.0-or-later~~
-Proprietary for futur version due to script kiddies learn from the code.
+Proprietary for future version due to script kiddies learn from the code.
 
 ## How it works
 
@@ -14,7 +14,7 @@ and use Regex (currently hardcoded) to filter out potential spam.
 
 Detailed information will not be provided because this document cannot cover all setup.
 
-Use following snipplets to adapt this for your own needs
+Use following snipplets to adapt this for your own needs.
 
 nginx.conf
 ```
