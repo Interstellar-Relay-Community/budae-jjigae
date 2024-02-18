@@ -19,6 +19,14 @@ Use following snipplets to adapt this for your own needs
 nginx.conf
 ```
     location /inbox {
+        try_files $uri @budae;
+    }
+
+    location ~ /users/(.*)/inbox {
+        try_files $uri @budae;
+    }
+
+    location @budae {
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
