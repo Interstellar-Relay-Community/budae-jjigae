@@ -1,5 +1,9 @@
+use fs::read_to_string;
 use std::net::SocketAddr;
 
+use std::fs;
+use std::path::Path;
+use directories::ProjectDirs;
 use bytes::Bytes;
 use clap::Parser;
 use http_body_util::{BodyExt, Full};
@@ -14,14 +18,16 @@ use std::sync::Arc;
 use tokio::net::{TcpListener, TcpStream};
 
 use once_cell::sync::Lazy;
+fn path_exists<P: AsRef<Path>>(path: P) -> bool {
+    return path.as_ref().exists();
+}
 
-static FILTERS: Lazy<Arc<Vec<Regex>>> = Lazy::new(|| {
+fn default_filters() -> Vec<Regex> {
     let re = vec![
         // GTUBE
         Regex::new(
             r"XJS\*C4JDBQADN1\.NSBN3\*2IDNEN\*GTUBE-STANDARD-ANTI-UBE-TEST-ACTIVITYPUB\*C\.34X",
-        )
-        .unwrap(),
+        ).unwrap(),
         // Sorry, @ap12, but they are using your name in spam
         Regex::new(r"mastodon-japan\.net\/@ap12").unwrap(),
         // Would you kindly stop spamming in Korean?
@@ -29,7 +35,26 @@ static FILTERS: Lazy<Arc<Vec<Regex>>> = Lazy::new(|| {
         // Fucking discord.
         Regex::new(r"discord.gg\/ctkpaarr").unwrap(),
     ];
-    Arc::new(re)
+    return re;
+}
+
+static FILTERS: Lazy<Arc<Vec<Regex>>> = Lazy::new(|| {
+    if let Some(config) = ProjectDirs::from("org","Interstellar-Relay-Community","BudaeJjigae") {
+        if path_exists(config.config_dir().join("filters.txt")) {
+            let re = read_to_string(config.config_dir().join("filters.txt"))
+                .unwrap()
+                .split('\n')
+                .map(|s| Regex::new(s).unwrap()).by_ref().collect::<Vec<_>>();
+
+            Arc::new(re)
+        } else {
+            eprintln!("filters.txt not found. Using default filters.");
+            Arc::new(default_filters())
+        }
+    } else {
+        eprintln!("Could not find config directory, using default filters.");
+        Arc::new(default_filters())
+    }
 });
 
 #[derive(Parser, Clone, Debug)]
