@@ -48,6 +48,7 @@ pub fn extract_obj<'a>(
         Some("Add") => None,
         Some("Remove") => None,
         Some("Person") => None,
+        Some("Question") => None,
         Some("Like") => None,
         Some(x) => {
             tracing::warn!("Unknown type: {}. Please report to Interstellar Team!", x);
