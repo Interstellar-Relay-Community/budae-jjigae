@@ -26,4 +26,4 @@ diesel = { version = "^2.1.4", features = ["postgres_backend"] }
 diesel-async = { version = "^0.4.1", features = ["bb8", "postgres"] }
 async-trait = "0.1.77"
 
-mrf-policy = { path = "../mrf_policy" }
+mrf-policy = { path = "../modeum-sari" }

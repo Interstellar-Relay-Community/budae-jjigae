@@ -1,3 +1,6 @@
 /target
 Dockerfile
 /.idea
+/.git
+/build-docker.sh
+/.dockerignore
