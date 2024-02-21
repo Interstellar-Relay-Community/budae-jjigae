@@ -1,8 +1,7 @@
 # [Budae Jjigae](https://en.wikipedia.org/wiki/Budae-jjigae) - ActivityPub spam filter
 
 ## License
-~~AGPL-3.0-or-later~~
-Proprietary for future version due to script kiddies learn from the code.
+MPL except `modeum-sari`
 
 ## How it works
 
