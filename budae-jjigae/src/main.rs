@@ -11,13 +11,16 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::Router;
 
-use sonic_rs::{pointer, JsonValueTrait};
+use sonic_rs::JsonValueTrait;
 
 use tracing_subscriber::EnvFilter;
 
 use clap::Parser;
 
+mod extract_object;
 mod mrf;
+
+use extract_object::extract_obj;
 
 #[derive(Parser, Clone, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -112,38 +115,12 @@ async fn handler(
         tracing::info!("Request body: {}", body.to_string());
     }
 
+    let mut pointer = vec![];
+
     // Extract object
-    let object = match body.pointer(pointer!["type"]).as_str() {
-        Some("Announce") => match body.pointer(pointer!["object"]).as_str() {
-            Some(obj_ref) => {
-                tracing::warn!("Announce support is not fully implemented!");
-                tracing::warn!("If something goes wrong, please report to Interstellar Team!");
-                tracing::warn!("Announce object reference: {}", obj_ref);
-                None
-            }
-            None => body.pointer(pointer!["object", "object"]),
-        },
-        Some("Create") => body.pointer(pointer!["object"]),
-        Some("Update") => body.pointer(pointer!["object"]),
-        Some("Delete") => None,
-        Some("Follow") => None,
-        Some("Like") => None,
-        Some("Block") => None,
-        Some("Undo") => None,
-        Some("View") => None,
-        Some("Add") => None,
-        Some("Remove") => None,
-        Some(x) => {
-            tracing::warn!("Unknown type: {}. Please report to Interstellar Team!", x);
-            tracing::warn!("Payload: {}", body.to_string());
-            body.pointer(pointer!["object"])
-        }
-        None => {
-            tracing::warn!("Cannot determine activity type!");
-            tracing::warn!("Report this activity to Interstellar Team!");
-            tracing::warn!("Payload: {}", body.to_string());
-            Some(&body)
-        }
+    let object = match extract_obj(&body, &mut pointer, 0) {
+        Some(x) => body.pointer(x),
+        None => None,
     };
 
     if let Some(obj) = object {

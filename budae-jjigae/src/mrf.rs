@@ -6,7 +6,7 @@ pub async fn filter(object: &Value, filter_config: &FilterConfig) -> Result<(), 
     let filter_result = mrf_policy::filter(object, filter_config).await;
 
     match filter_result {
-        Ok(_) => {},
+        Ok(_) => {}
         Err(idx) => {
             // Extract ID
             let object_id_raw = object.pointer(pointer!["id"]);
@@ -16,11 +16,11 @@ pub async fn filter(object: &Value, filter_config: &FilterConfig) -> Result<(), 
             let content_str_raw = object.pointer(pointer!["content"]);
             let content_str = content_str_raw.as_str().unwrap_or("Unknown content!");
             tracing::info!(
-                    "Spam killed - filter #{}: {} => {}",
-                    idx,
-                    object_uri,
-                    content_str
-                );
+                "Spam killed - filter #{}: {} => {}",
+                idx,
+                object_uri,
+                content_str
+            );
             return Err(());
         }
     }
