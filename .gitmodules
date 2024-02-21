@@ -1,0 +1,3 @@
+[submodule "sigh"]
+	path = sigh
+	url = https://github.com/perillamint/sigh.git
