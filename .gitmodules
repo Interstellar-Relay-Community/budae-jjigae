@@ -1,3 +1,6 @@
 [submodule "sigh"]
 	path = sigh
 	url = https://github.com/perillamint/sigh.git
+[submodule "modeum-sari"]
+	path = modeum-sari
+	url = git@github.com:Interstellar-Relay-Community/modeum-sari.git
