@@ -27,7 +27,6 @@ pub fn extract_obj<'a>(
         Some("Announce") => {
             tracing::debug!("Extracting object from Announce");
             pointer.push(PointerNode::Key("object".into()));
-            println!("{:?}", pointer);
             extract_obj(object, pointer, cnt + 1)
         }
         Some("Create") => {
