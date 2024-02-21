@@ -17,9 +17,9 @@ pub fn extract_obj<'a>(
     }
 
     if let Some(obj_ref) = inner_obj.as_str() {
-        tracing::warn!("Object reference support is not fully implemented!");
-        tracing::warn!("If something goes wrong, please report to Interstellar Team!");
-        tracing::warn!("Object reference: {}", obj_ref);
+        tracing::info!("Object reference support is not implemented!");
+        tracing::info!("If something goes wrong, please report to Interstellar Team!");
+        tracing::info!("Object reference: {}", obj_ref);
         return Some(pointer);
     }
 
@@ -48,6 +48,8 @@ pub fn extract_obj<'a>(
         Some("View") => None,
         Some("Add") => None,
         Some("Remove") => None,
+        Some("Person") => None,
+        Some("Like") => None,
         Some(x) => {
             tracing::warn!("Unknown type: {}. Please report to Interstellar Team!", x);
             tracing::warn!("Payload: {}", object.to_string());
