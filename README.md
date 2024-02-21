@@ -3,6 +3,9 @@
 ## License
 MPL except `modeum-sari`
 
+### Why `modeum-sari` isn't public?
+Due to spammer adaptation, we decided to only disclose content of `modeum-sari` to trustable fedmins.
+
 ## How it works
 
 This project quickly inspect `.object.content` key from ActivityStrema object poured into `/inbox`
