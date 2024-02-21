@@ -1,138 +1,186 @@
-use std::net::SocketAddr;
-
-use bytes::Bytes;
-use clap::Parser;
-use http_body_util::{BodyExt, Full};
-use hyper::body::{Body, Incoming};
-use hyper::server::conn::http1;
-use hyper::service::service_fn;
-use hyper::{Request, Response, StatusCode};
-use hyper_util::rt::tokio::TokioIo;
-use regex::Regex;
-use sonic_rs::{pointer, JsonContainerTrait, JsonValueTrait};
 use std::sync::Arc;
-use tokio::net::{TcpListener, TcpStream};
 
-use once_cell::sync::Lazy;
+use tokio::net::TcpStream;
 
-static FILTERS: Lazy<Arc<Vec<Regex>>> = Lazy::new(|| {
-    let re = vec![
-        // GTUBE
-        Regex::new(
-            r"XJS\*C4JDBQADN1\.NSBN3\*2IDNEN\*GTUBE-STANDARD-ANTI-UBE-TEST-ACTIVITYPUB\*C\.34X",
-        )
-        .unwrap(),
-        // Sorry, @ap12, but they are using your name in spam
-        Regex::new(r"mastodon-japan\.net\/@ap12").unwrap(),
-        // Would you kindly stop spamming in Korean?
-        Regex::new(r"한국괴물군").unwrap(),
-        // Fucking discord.
-        Regex::new(r"discord.gg\/ctkpaarr").unwrap(),
-    ];
-    Arc::new(re)
-});
+use http_body_util::{BodyExt, Full};
+use hyper_util::rt::TokioIo;
+
+use axum::extract::{Request, State};
+use axum::http::StatusCode;
+use axum::response::{IntoResponse, Response};
+use axum::routing::{get, post};
+use axum::Router;
+
+use sonic_rs::{pointer, JsonValueTrait};
+
+use tracing_subscriber::EnvFilter;
+
+use clap::Parser;
+
+mod mrf;
 
 #[derive(Parser, Clone, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
     #[arg(long)]
     backend: String,
+    #[arg(long, default_value = "3000")]
+    listen_port: u16,
     #[arg(long, default_value = "5")]
     max_new_reply_cnt: i32,
-    #[arg(long, default_value = "true")]
+    #[arg(long)]
+    spam_in_teapot: bool,
+    #[arg(long)]
     silent_mode: bool,
-
+    #[arg(long, help = "deprecated. Doesn't do anything for now.")]
+    enable_hc: bool,
+    #[arg(
+        long,
+        help = "Log every object in log to help spam filter debug. INTRODUCES PRIVACY ISSUE"
+    )]
+    peeping_tom: bool,
 }
 
-// An async function that consumes a request, does nothing with it and returns a
-// response.
-async fn hello(
-    req: Request<Incoming>,
-    args: &Args,
-) -> Result<Response<Full<Bytes>>, hyper::Error> {
-    let max = req.body().size_hint().upper().unwrap_or(u64::MAX);
-    if max > 1024 * 1024 * 2 {
-        let mut resp = Response::new(Full::new(Bytes::from("Request too big!")));
-        *resp.status_mut() = hyper::StatusCode::PAYLOAD_TOO_LARGE;
-        return Ok(resp);
-    }
+#[derive(Clone)]
+struct AppState {
+    args: Arc<Args>,
+    filter_config: Arc<mrf_policy::FilterConfig>,
+}
 
-    let status_code = match args.silent_mode {
-        true => StatusCode::CREATED,
-        false => StatusCode::IM_A_TEAPOT,
+#[tokio::main]
+async fn main() {
+    tracing_subscriber::fmt()
+        .with_env_filter(EnvFilter::from_default_env())
+        .init();
+
+    tracing::info!(
+        "ActivityPub Spam Filter v{} ~ Budae Jjigae (Johnson Tang Edition) ~ ",
+        env!("CARGO_PKG_VERSION")
+    );
+
+    let args = Arc::new(Args::parse());
+
+    let app_state = AppState {
+        args: args.clone(),
+        filter_config: Arc::new(mrf_policy::FilterConfig {
+            max_new_reply_cnt: args.max_new_reply_cnt,
+        }),
     };
 
-    let (parts, incoming) = req.into_parts();
+    let app = Router::new()
+        // handle inboxes
+        .route("/healthcheck", get(healthcheck))
+        .route("/*path", post(handler))
+        //.route("/inbox", post(handler))
+        //.route("/users/:user/inbox", post(handler))
+        .with_state(app_state);
 
-    let body_bytes = incoming.collect().await?.to_bytes();
+    let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", args.listen_port))
+        .await
+        .unwrap();
+
+    tracing::info!("Listening on {}", listener.local_addr().unwrap());
+
+    axum::serve(listener, app).await.unwrap();
+}
+
+async fn healthcheck() -> Result<Response, StatusCode> {
+    Ok(Response::new("Health OK!".into()))
+}
+
+async fn handler(
+    State(app_state): State<AppState>,
+    req: Request,
+) -> Result<impl IntoResponse, StatusCode> {
+    let args = app_state.args;
+    let filter_config = app_state.filter_config;
+
+    let (parts, body) = req.into_parts();
+
+    // TODO: Remove unwrap
+    let body_bytes = body.into_data_stream().collect().await.unwrap().to_bytes();
 
     let body: sonic_rs::Value = match sonic_rs::from_slice(&body_bytes) {
         Ok(x) => x,
         Err(e) => {
-            let mut response = Response::new(Full::new(Bytes::from("bad!")));
-            *(response.status_mut()) = StatusCode::BAD_REQUEST;
-
-            return Ok(response);
+            tracing::warn!("Failed to process body: {:?}", e);
+            return Err(StatusCode::BAD_REQUEST);
         }
     };
 
+    if args.peeping_tom {
+        tracing::info!("Request body: {}", body.to_string());
+    }
+
     // Extract object
-    let object = body.pointer(pointer!["object"]);
-
-    // Extract content
-    if let Some(content_str) = object.pointer(pointer!["content"]).as_str() {
-        // Extract ID
-        let object_id_raw = object.pointer(pointer!["id"]);
-        let object_id = object_id_raw.as_str().unwrap_or("Unknown ID");
-
-        for re in FILTERS.iter() {
-            if let Some(_) = re.captures(content_str) {
-                // Spam!!
-                tracing::info!("Spam killed - RegExp: {} => {}", object_id, content_str);
-                let mut response = Response::new(Full::new(Bytes::from("Spam is not allowed.")));
-                *(response.status_mut()) = status_code;
-
-                return Ok(response);
+    let object = match body.pointer(pointer!["type"]).as_str() {
+        Some("Announce") => match body.pointer(pointer!["object"]).as_str() {
+            Some(obj_ref) => {
+                tracing::warn!("Announce support is not fully implemented!");
+                tracing::warn!("If something goes wrong, please report to Interstellar Team!");
+                tracing::warn!("Announce object reference: {}", obj_ref);
+                None
             }
+            None => body.pointer(pointer!["object", "object"]),
+        },
+        Some("Create") => body.pointer(pointer!["object"]),
+        Some("Update") => body.pointer(pointer!["object"]),
+        Some("Delete") => None,
+        Some("Follow") => None,
+        Some("Like") => None,
+        Some("Block") => None,
+        Some("Undo") => None,
+        Some("View") => None,
+        Some("Add") => None,
+        Some("Remove") => None,
+        Some(x) => {
+            tracing::warn!("Unknown type: {}. Please report to Interstellar Team!", x);
+            tracing::warn!("Payload: {}", body.to_string());
+            body.pointer(pointer!["object"])
         }
+        None => {
+            tracing::warn!("Cannot determine activity type!");
+            tracing::warn!("Report this activity to Interstellar Team!");
+            tracing::warn!("Payload: {}", body.to_string());
+            Some(&body)
+        }
+    };
 
-        if let Some(reply_to) = object.pointer(pointer!["inReplyTo"]) {
-            if reply_to.is_null() {
-                if let Some(tags) = object.pointer(pointer!["tag"]).as_array() {
-                    let mut mention_cnt = 0;
-                    for tag in tags.iter() {
-                        if let Some(tag_type) = tag.pointer(pointer!["type"]).as_str() {
-                            if tag_type == "Mention" {
-                                mention_cnt += 1;
-                            }
-                        }
-                    }
-
-                    if mention_cnt >= args.max_new_reply_cnt {
-                        // Spam!!
-                        tracing::info!(
-                            "Spam killed - Too many mention: {} => {}",
-                            object_id,
-                            content_str
-                        );
-                        let mut response =
-                            Response::new(Full::new(Bytes::from("Spam is not allowed.")));
-                        *(response.status_mut()) = status_code;
-
-                        return Ok(response);
-                    }
+    if let Some(obj) = object {
+        match mrf::filter(obj, &filter_config).await {
+            Ok(_) => {}
+            Err(_) => {
+                return match args.spam_in_teapot {
+                    true => Err(StatusCode::IM_A_TEAPOT),
+                    false => Err(StatusCode::CREATED),
                 }
             }
         }
     }
 
-    tracing::info!("Spam filter passed. Relaying to the server.");
+    if !args.silent_mode {
+        tracing::info!("Passed all filter. Relaying message to the backend.");
+    }
 
-    // TODO: Make it configurable
-    let stream = TcpStream::connect(&args.backend).await.unwrap();
+    // TODO: Pool using bb-8
+    let stream = TcpStream::connect(&args.backend)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to do open socket: {:?}", e);
+            e
+        })
+        .unwrap(); // TODO: FIXME
+
     let io = TokioIo::new(stream);
     tracing::debug!("Handshaking..");
-    let (mut sender, conn) = hyper::client::conn::http1::handshake(io).await?;
+    let (mut sender, conn) = hyper::client::conn::http1::handshake(io)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to do handshake: {:?}", e);
+            e
+        })
+        .unwrap(); // TODO: FIXME
+
     tracing::debug!("Handshake done.");
 
     tokio::task::spawn(async move {
@@ -143,42 +191,31 @@ async fn hello(
 
     let req = Request::from_parts(parts, Full::new(body_bytes));
     tracing::debug!("Sending req!");
-    let res = sender.send_request(req).await.unwrap();
+    let res = sender
+        .send_request(req)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to send request: {:?}", e);
+            e
+        })
+        .unwrap();
 
     let (resp_parts, resp_body) = res.into_parts();
-    let payload = resp_body.collect().await?.to_bytes();
+    let payload = resp_body
+        .collect()
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to collect response body: {:?}", e);
+            e
+        })
+        .unwrap()
+        .to_bytes();
 
-    tracing::debug!("Returning!");
+    tracing::debug!("Response: {:?}. {:?}", resp_parts, payload);
 
-    Ok(Response::from_parts(resp_parts, Full::new(payload)))
-}
+    //let resp = Response::new("");
 
-#[tokio::main]
-pub async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    tracing_subscriber::fmt().init();
+    Ok(resp_parts.status)
 
-    let args = Arc::new(Args::parse());
-
-    // This address is localhost
-    let addr: SocketAddr = ([0, 0, 0, 0], 3000).into();
-
-    // Bind to the port and listen for incoming TCP connections
-    let listener = TcpListener::bind(addr).await?;
-    println!("Listening on http://{}", addr);
-
-    loop {
-        let (tcp, _) = listener.accept().await?;
-        let io = TokioIo::new(tcp);
-
-        let args = args.clone();
-
-        tokio::task::spawn(async move {
-            if let Err(err) = http1::Builder::new()
-                .serve_connection(io, service_fn(|req| hello(req, &args)))
-                .await
-            {
-                println!("Error serving connection: {:?}", err);
-            }
-        });
-    }
+    //Ok(Response::from_parts(resp_parts, "".into()))
 }
