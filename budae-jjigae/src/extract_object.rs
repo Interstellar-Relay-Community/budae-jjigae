@@ -50,6 +50,7 @@ pub fn extract_obj<'a>(
         Some("Person") => None,
         Some("Question") => None,
         Some("Like") => None,
+        Some("Dislike") => None,
         Some(x) => {
             tracing::warn!("Unknown type: {}. Please report to Interstellar Team!", x);
             tracing::warn!("Payload: {}", object.to_string());
