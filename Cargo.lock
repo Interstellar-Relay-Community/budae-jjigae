@@ -215,7 +215,7 @@ dependencies = [
 
 [[package]]
 name = "budae-jjigae"
-version = "0.2.12"
+version = "0.2.13"
 dependencies = [
  "anyhow",
  "async-trait",
