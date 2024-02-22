@@ -40,6 +40,7 @@ pub fn extract_obj<'a>(
             extract_obj(object, pointer, cnt + 1)
         }
         Some("Note") => Some(pointer),
+        Some("Question") => Some(pointer),
         Some("Delete") => None,
         Some("Follow") => None,
         Some("Block") => None,
@@ -48,7 +49,6 @@ pub fn extract_obj<'a>(
         Some("Add") => None,
         Some("Remove") => None,
         Some("Person") => None,
-        Some("Question") => None,
         Some("Like") => None,
         Some("Dislike") => None,
         Some(x) => {
