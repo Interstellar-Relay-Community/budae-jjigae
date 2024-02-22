@@ -95,7 +95,7 @@ nginx.conf (for Lemmy)
 ```
 
 
-docker-compose.yml
+docker-compose.yml (If you're using Lemmy, change "web:3000" to "lemmy:8536" and remove networks section.)
 ```
   budae:
     image: perillamint/budae-jjigae:latest
