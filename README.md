@@ -20,7 +20,7 @@ Detailed information will not be provided because this document cannot cover all
 
 Use following snipplets to adapt this for your own needs.
 
-nginx.conf
+nginx.conf (for Mastodon, Misskey, etc)
 ```
     location /inbox {
         try_files $uri @budae;
@@ -54,6 +54,46 @@ nginx.conf
         tcp_nodelay on;
     }
 ```
+
+nginx.conf (for Lemmy)
+```
+    location /inbox {
+        try_files $uri @budae;
+    }
+
+    location ~ /u/(.*)/inbox {
+        try_files $uri @budae;
+    }
+    
+    location ~ /c/(.*)/inbox {
+        try_files $uri @budae;
+    }
+
+    location @budae {
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header Proxy "";
+        proxy_pass_header Server;
+        # Avoid 504 HTTP Timeout Errors
+        proxy_connect_timeout       605;
+        proxy_send_timeout          605;
+        proxy_read_timeout          605;
+        send_timeout                605;
+        keepalive_timeout           605;
+
+        proxy_pass http://127.0.0.1:7000;
+        proxy_buffering off;
+        proxy_redirect off;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+
+        tcp_nodelay on;
+    }
+```
+
 
 docker-compose.yml
 ```
