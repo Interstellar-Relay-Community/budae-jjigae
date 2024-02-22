@@ -94,6 +94,21 @@ nginx.conf (for Lemmy)
     }
 ```
 
+Caddyfile (for Pleroma/Akkoma)
+```
+    route /inbox {
+        reverse_proxy budae:3000
+    }
+
+    route /relay/inbox {
+        reverse_proxy budae:3000
+    }
+
+    route /users/*/inbox {
+        reverse_proxy budae:3000
+    }
+```
+
 
 docker-compose.yml (If you're using Lemmy, change "web:3000" to "lemmy:8536" and remove networks section.)
 ```
