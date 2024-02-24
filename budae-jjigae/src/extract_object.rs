@@ -51,9 +51,9 @@ pub fn extract_obj<'a>(
         Some("Person") => None,
         Some("Like") => None,
         Some("Dislike") => None,
+        Some("Accept") => None,
+        Some("Block") => None,
         Some(x) => {
-            tracing::warn!("Unknown type: {}. Please report to Interstellar Team!", x);
-            tracing::warn!("Payload: {}", object.to_string());
             if inner_obj.pointer(pointer!["object"]).is_some() {
                 // Extracting anyway.
                 pointer.push(PointerNode::Key("object".into()));
