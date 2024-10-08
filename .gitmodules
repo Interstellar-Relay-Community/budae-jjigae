@@ -4,3 +4,6 @@
 [submodule "modeum-sari"]
 	path = modeum-sari
 	url = git@github.com:Interstellar-Relay-Community/modeum-sari.git
+[submodule "kitsune-mrf/wit/wasi-logging"]
+	path = kitsune-mrf/wit/wasi-logging
+	url = https://github.com/WebAssembly/wasi-logging.git
