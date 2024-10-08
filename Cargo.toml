@@ -4,6 +4,7 @@ members = [
   "budae-jjigae", 
   "modeum-sari",
   "crates/kitsune-wasm-mrf",
+  "crates/kitsune-wasm-mrf/example-mrf",
   "crates/kitsune-config",
   "crates/kitsune-derive",
   "crates/kitsune-error",
