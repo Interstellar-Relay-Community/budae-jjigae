@@ -2,7 +2,74 @@
 resolver = "2"
 members = [
   "budae-jjigae", 
-  "sigh",
   "modeum-sari",
-  "crates/kitsune-mrf",
+  "crates/kitsune-wasm-mrf",
+  "crates/kitsune-config",
+  "crates/kitsune-derive",
+  "crates/kitsune-error",
+  "crates/kitsune-type",
+  "lib/mrf-manifest",
+  "lib/mrf-tool",
+  "lib/speedy-uuid",
+  "lib/fast-cjson",
 ]
+
+[workspace.package]
+authors = ["The Interstellar Project Contributors", "The Kitsune Authors"]
+version = "0.3.0-dev"
+edition = "2021"
+license = "AGPL-3.0-or-later"
+
+[workspace.dependencies]
+triomphe = { version = "0.1.13", default-features = false, features = [
+  "unsize",
+] }
+tokio = { version = "1.40.0", features = ["full"] }
+sonic-rs = "0.3.13"
+clap = { version = "4.5.20", features = ["derive", "wrap_help"] }
+fred = { version = "9.2.1", features = [
+  "enable-rustls-ring",
+  "full-tracing",
+  "i-scripts",
+  "sha-1",
+  "unix-sockets",
+] }
+garde = { version = "0.20.0", features = [
+  "derive",
+  "email",
+  "email-idna",
+  "regex",
+  "serde",
+] }
+iso8601-timestamp = "0.3.0-rc.1"
+kitsune-wasm-mrf = { path = "crates/kitsune-wasm-mrf" }
+kitsune-config = { path = "crates/kitsune-config" }
+kitsune-derive = { path = "crates/kitsune-derive" }
+kitsune-error = { path = "crates/kitsune-error" }
+kitsune-type = { path = "crates/kitsune-type" }
+
+mrf-manifest = { path = "lib/mrf-manifest" }
+speedy-uuid = { path = "lib/speedy-uuid", features = ["serde"] }
+fast-cjson = { path = "lib/fast-cjson" }
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+
+cast_lossless = "allow"
+cast_possible_truncation = "allow"
+cast_possible_wrap = "allow"
+cast_sign_loss = "allow"
+module_name_repetitions = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+no_effect_underscore_binding = "allow"
+
+[workspace.lints.rust]
+forbidden_lint_groups = "allow"
+rust_2018_idioms = { level = "forbid", priority = -1 }
+unsafe_code = "deny"
+
+[patch.crates-io]
+# SIMD runtime detection and generic I/O wrapper
+sonic-rs = { git = "https://github.com/aumetra/sonic-rs.git", rev = "add820f8837c974fcee4110e678bb9e79b3f6ecb" }

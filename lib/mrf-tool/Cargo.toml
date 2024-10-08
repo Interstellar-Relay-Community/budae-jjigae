@@ -1,0 +1,26 @@
+[package]
+name = "mrf-tool"
+description = "Tool for preparing and introspecting WASM MRFs"
+authors.workspace = true
+edition.workspace = true
+version.workspace = true
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+clap = { workspace = true }
+color-eyre = "0.6.3"
+colored_json = "5.0.0"
+mrf-manifest = { workspace = true, features = [
+    "decode",
+    "encode",
+    "serialise",
+] }
+sonic-rs = { workspace = true }
+wasmparser = "0.217.0"
+
+[lints]
+workspace = true
+
+[dev-dependencies]
+sonic-rs = { workspace = true }
+wat = "1.217.0"

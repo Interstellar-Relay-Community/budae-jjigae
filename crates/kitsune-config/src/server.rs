@@ -1,0 +1,17 @@
+use super::oidc;
+use serde::{Deserialize, Serialize};
+use smol_str::SmolStr;
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct Configuration {
+    #[serde(default)]
+    pub clacks_overhead: Vec<SmolStr>,
+    pub deny_brave_browsers: bool,
+    pub frontend_dir: SmolStr,
+    pub max_upload_size: human_size::Size,
+    pub media_proxy_enabled: bool,
+    pub oidc: Option<oidc::Configuration>,
+    pub port: u16,
+    pub request_timeout_secs: u64,
+}
