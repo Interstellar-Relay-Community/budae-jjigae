@@ -1,12 +1,9 @@
 # [Budae Jjigae](https://en.wikipedia.org/wiki/Budae-jjigae) - ActivityPub Message Rejection Facility in Rust
 
+Simpson Tang Edition - WORK IN PROGRESS
+
 ## License
-MPL except `modeum-sari`
-
-### Why `modeum-sari` isn't public?
-`modeum-sari` is a set of anti-spam MRF policies implemented in Rust
-
-Due to spammer adaptation, we decided to only disclose content of `modeum-sari` to trustable fedmins.
+AGPL-3.0
 
 ## How it works
 
