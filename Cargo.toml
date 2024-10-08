@@ -4,5 +4,5 @@ members = [
   "budae-jjigae", 
   "sigh",
   "modeum-sari",
-  "kitsune-mrf",
+  "crates/kitsune-mrf",
 ]
